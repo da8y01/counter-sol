@@ -6,46 +6,63 @@ declare_id!("GYb4aembe4KUgHV27LNadiNnNZqDVLEdBmAqXJpmbUQT");
 pub mod counter {
     use super::*;
 
-    pub fn create_counter(_ctx: Context<Crear>, primer_numero: u64) -> Result<()> {
-        _ctx.accounts.contador.numero = primer_numero;
-        _ctx.accounts.contador.autoridad = _ctx.accounts.autoridad.key();
-        msg!("creando un contador con numero inicial {} ", primer_numero);
+    pub fn create_counter(_ctx: Context<Create>, first_number: u64) -> Result<()> {
+        _ctx.accounts.counter.count = first_number;
+        _ctx.accounts.counter.authority = _ctx.accounts.authority.key();
+        msg!("creando un contador con numero inicial {} ", first_number);
         Ok(())
     }
 
-    pub fn delete_counter(_ctx: Context<Borrar>) -> Result<()> {
+    pub fn delete_counter(_ctx: Context<Delete>) -> Result<()> {
         msg!("Contador eliminado");
+        Ok(())
+    }
+
+    pub fn increment_counter(_ctx: Context<Increment>) -> Result<()> {
+        _ctx.accounts.counter.count = _ctx.accounts.counter.count + 1;
+        msg!(
+            "incrementando el contador a un nuevo valor de numero: {}",
+            _ctx.accounts.counter.count
+        );
         Ok(())
     }
 }
 
 #[derive(Accounts)]
 #[instruction(count: u64)]
-pub struct Crear<'info> {
+pub struct Create<'info> {
     // 8 bytes para discriminador  + (lo que ocupe tu estructura)
-    #[account(init, payer = autoridad, space = 8 + 8 + 32)]
-    pub contador: Account<'info, Contador>,
+    #[account(init, payer = authority, space = 8 + 8 + 32)]
+    pub counter: Account<'info, Counter>,
     #[account(mut)]
-    pub autoridad: Signer<'info>,
+    pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
-pub struct Borrar<'info> {
+pub struct Delete<'info> {
     #[account(mut)]
-    pub autoridad: Signer<'info>,
+    pub authority: Signer<'info>,
     #[account(
         mut,
-        constraint = contador.autoridad == contador.key(),
-        close = autoridad
+        constraint = counter.authority == counter.key(),
+        close = authority
     )]
-    pub contador: Account<'info, Contador>,
+    pub counter: Account<'info, Counter>,
+}
+
+#[derive(Accounts)]
+pub struct Increment<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(mut)]
+    pub counter: Account<'info, Counter>,
 }
 
 #[account]
-pub struct Contador {
-    numero: u64,       // 8 bytes
-    autoridad: Pubkey, // 32 bytes
+pub struct Counter {
+    count: u64,       // 8 bytes
+    authority: Pubkey, // 32 bytes
 }
 
 #[error_code]
