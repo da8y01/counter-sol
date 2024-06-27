@@ -13,6 +13,12 @@ pub mod counter {
         Ok(())
     }
 
+    pub fn update_counter(ctx: Context<UpdateCounter>, count: u64) -> Result<()> {
+        ctx.accounts.counter.count = count;
+        msg!("Updated counter count to: {}!", count);
+        Ok(())
+    }
+
     pub fn delete_counter(_ctx: Context<Delete>) -> Result<()> {
         msg!("Contador eliminado");
         Ok(())
@@ -24,6 +30,13 @@ pub mod counter {
             "incrementando el contador a un nuevo valor de numero: {}",
             _ctx.accounts.counter.count
         );
+        Ok(())
+    }
+
+    pub fn decrement_counter(ctx: Context<DecrementCounter>) -> Result<()> {
+        let count = ctx.accounts.counter.count;
+        ctx.accounts.counter.count = count - 1;
+        msg!("Updated counter count to: {}!", count);
         Ok(())
     }
 }
@@ -40,12 +53,23 @@ pub struct Create<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(count: u64)]
+pub struct UpdateCounter<'info> {
+    #[account(
+        mut, 
+        constraint = counter.authority == authority.key() @ ErrorCode::NotAuthorized, 
+    )]
+    pub counter: Account<'info, Counter>,
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
 pub struct Delete<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
     #[account(
         mut,
-        constraint = counter.authority == counter.key(),
+        constraint = counter.authority == authority.key() @ ErrorCode::NotAuthorized,
         close = authority
     )]
     pub counter: Account<'info, Counter>,
@@ -59,6 +83,17 @@ pub struct Increment<'info> {
     pub counter: Account<'info, Counter>,
 }
 
+#[derive(Accounts)]
+pub struct DecrementCounter<'info> {
+    #[account(
+        mut, 
+        constraint = counter.authority == authority.key() @ ErrorCode::NotAuthorized, 
+        constraint = counter.count > 0 @ ErrorCode::CantDecrement, 
+    )]
+    pub counter: Account<'info, Counter>,
+    pub authority: Signer<'info>,
+}
+
 #[account]
 pub struct Counter {
     count: u64,       // 8 bytes
@@ -69,4 +104,6 @@ pub struct Counter {
 pub enum ErrorCode {
     #[msg("You are not authorized.")]
     NotAuthorized,
+    #[msg("Counter already at 0.")]
+    CantDecrement,
 }
